@@ -1,0 +1,28 @@
+{
+  "name": "knowledge-graph",
+  "version": "1.0.0",
+  "description": "VS Code extension with a React + Vite webview",
+  "main": "./out/extension.js",
+  "activationEvents": [
+    "onCommand:knowledgeGraph.openView"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "knowledgeGraph.openView",
+        "title": "Open Knowledge Graph"
+      }
+    ]
+  },
+  "scripts": {
+    "compile": "tsc -p .",
+    "build:webview": "cd webview && npm run build",
+    "build": "npm run compile && npm run build:webview",
+    "package": "vsce package"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.0",
+    "typescript": "^5.9.3",
+    "vscode": "^1.1.37"
+  }
+}
