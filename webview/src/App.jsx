@@ -6,41 +6,73 @@ import {
   useNodesState,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import ExpandableNode from "./componenets/ExpandableNode";
-import { createSampleGraph } from "./utils/sampleGraph";
+import graphData from "./data/datagraph.json";
 
 function Flow() {
-  const graphData = useMemo(() => createSampleGraph(), []);
+  const [nodes, setNodes, onNodesChange] = useNodesState([]);
+  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
 
-  // Define a single main node that uses the custom node type
-  const initialNodes = [
-    {
-      id: "main",
+  const nodeTypes = useMemo(() => ({ expandable: ExpandableNode }), []);
+
+  useEffect(() => {
+    // 1. Convert JSON to ReactFlow nodes
+    const rfNodes = graphData.nodes.map((item, i) => ({
+      id: item.id,
       type: "expandable",
-      position: { x: 80, y: 100 },
-      data: graphData[0],
-    },
-  ];
+      position: { x: 100 + (i % 10) * 280, y: 80 + Math.floor(i / 10) * 160 },
+      data: {
+        label: item.name,
+        file: item.file,
+        type: item.type,
+        scope: item.scope,
+        sections: [
+          {
+            id: `sec-${item.id}`,
+            name: "Info",
+            subnodes: [
+              { id: `${item.id}-type`, label: `Type: ${item.type}` },
+              { id: `${item.id}-file`, label: `File: ${item.file}` },
+            ],
+          },
 
-  const [nodes, , onNodesChange] = useNodesState(initialNodes);
-  const [edges, , onEdgesChange] = useEdgesState([]);
+          {
+            id: `sec-scope-${item.id}`,
+            name: "Scope",
+            subnodes: item.scope.map((sc, idx) => ({
+              id: `${item.id}-scope-${idx}`,
+              label: sc,
+            })),
+          },
+        ],
+      },
+    }));
 
-  const nodeTypes = useMemo(
-    () => ({
-      expandable: ExpandableNode,
-    }),
-    []
-  );
+    // 2. Auto-connect by scope:
+    const rfEdges = [];
+    graphData.nodes.forEach((item) => {
+      item.scope.forEach((parentId) => {
+        rfEdges.push({
+          id: `edge-${parentId}-${item.id}`,
+          source: parentId,
+          target: item.id,
+        });
+      });
+    });
+
+    setNodes(rfNodes);
+    setEdges(rfEdges);
+  }, []);
 
   return (
     <div style={{ width: "100vw", height: "100vh" }}>
       <ReactFlow
         nodes={nodes}
         edges={edges}
+        nodeTypes={nodeTypes}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
-        nodeTypes={nodeTypes}
         fitView
       >
         <Background />

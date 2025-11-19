@@ -1,46 +1,59 @@
-import * as fs from "fs";
-import * as path from "path";
 import * as vscode from "vscode";
 
 export function activate(context: vscode.ExtensionContext) {
+  console.log("Webview Frontend Extension is now active!");
+
   const disposable = vscode.commands.registerCommand(
-    "myExtension.openView",
+    "webviewFrontend.openWebview",
     () => {
       const panel = vscode.window.createWebviewPanel(
-        "myView",
-        "My React Webview",
+        "myWebview",
+        "My Frontend Webview",
         vscode.ViewColumn.One,
         {
           enableScripts: true,
-          localResourceRoots: [
-            vscode.Uri.file(
-              path.join(context.extensionPath, "webview", "dist")
-            ),
-          ],
+          retainContextWhenHidden: true,
         }
       );
 
-      const indexPath = path.join(
-        context.extensionPath,
-        "webview",
-        "dist",
-        "index.html"
-      );
-      let html = fs.readFileSync(indexPath, "utf8");
+      // Load your frontend dev server in an iframe
+      panel.webview.html = getWebviewContent();
 
-      const baseUri = (panel.webview as any).asWebviewUri(
-        vscode.Uri.file(path.join(context.extensionPath, "webview", "dist"))
+      // Handle messages from frontend
+      panel.webview.onDidReceiveMessage(
+        (message) => {
+          if (message.command === "buttonClicked") {
+            vscode.window.showInformationMessage("Button clicked in frontend!");
+          }
+        },
+        undefined,
+        context.subscriptions
       );
-      html = html.replace(/(href|src)="([^"]+)"/g, (m, attr, src) => {
-        if (src.startsWith("http") || src.startsWith("data:")) return m;
-        return `${attr}="${baseUri}/${src}"`;
-      });
-
-      panel.webview.html = html;
     }
   );
 
   context.subscriptions.push(disposable);
+}
+
+function getWebviewContent(): string {
+  const devServerUrl = "http://localhost:5173"; // Update to your dev URL
+
+  return `
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <title>Frontend Webview</title>
+      <style>
+        html, body, iframe { margin: 0; padding: 0; height: 100%; width: 100%; }
+        iframe { border: none; }
+      </style>
+    </head>
+    <body>
+      <iframe src="${devServerUrl}"></iframe>
+    </body>
+    </html>
+  `;
 }
 
 export function deactivate() {}

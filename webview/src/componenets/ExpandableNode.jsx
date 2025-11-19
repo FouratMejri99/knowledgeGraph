@@ -1,186 +1,188 @@
+import { Handle, Position, useReactFlow } from "@xyflow/react";
 import { useState } from "react";
 
-export default function ExpandableNode({ data }) {
+export default function ExpandableNode({ id, data, isRoot = false }) {
+  const rf = useReactFlow();
+
   const [expanded, setExpanded] = useState(false);
   const [expandedSections, setExpandedSections] = useState({});
-  const [nodeName, setNodeName] = useState(data.label || "");
-  const [sections, setSections] = useState(data.sections || []);
+  const [nodeName, setNodeName] = useState(data.label || "Node");
+  const [sections, setSections] = useState(
+    data.sections?.length
+      ? data.sections
+      : [{ id: `${id}-sec1`, name: "Section 1", subnodes: [] }]
+  );
 
-  const toggleNode = () => setExpanded((prev) => !prev);
-  const toggleSection = (id) =>
-    setExpandedSections((prev) => ({ ...prev, [id]: !prev[id] }));
+  const toggleNode = () => setExpanded((p) => !p);
+  const toggleSection = (sectionId) =>
+    setExpandedSections((prev) => ({ ...prev, [sectionId]: !prev[sectionId] }));
 
-  const handleSectionNameChange = (id, newName) => {
-    setSections((prev) =>
-      prev.map((s) => (s.id === id ? { ...s, name: newName } : s))
-    );
+  const createNewChildNode = (parentNodeId) => {
+    const newId = `node-${Date.now()}`;
+    const parent = rf.getNode(parentNodeId);
+    if (!parent) return;
+
+    const newNode = {
+      id: newId,
+      type: "expandable",
+      position: {
+        x: parent.position.x + 240,
+        y: parent.position.y + Math.random() * 80,
+      },
+      data: { label: "Child Node", sections: [] },
+    };
+
+    rf.addNodes(newNode);
+    rf.addEdges({
+      id: `edge-${parentNodeId}-${newId}`,
+      source: parentNodeId,
+      target: newId,
+    });
   };
 
-  const handleSubnodeNameChange = (sectionId, subId, newName) => {
-    setSections((prev) =>
-      prev.map((s) =>
-        s.id === sectionId
-          ? {
-              ...s,
-              subnodes: s.subnodes.map((sub) =>
-                sub.id === subId ? { ...sub, name: newName } : sub
-              ),
-            }
-          : s
-      )
-    );
+  const addSection = () => {
+    const newSection = {
+      id: `${id}-sec-${Date.now()}`,
+      name: `Section ${sections.length + 1}`,
+      subnodes: [],
+    };
+    setSections((prev) => [...prev, newSection]);
   };
 
   return (
     <div
       style={{
-        border: "1px solid #d0d7de",
-        borderRadius: 8,
-        background: "#ffffff",
-        boxShadow: "0 2px 6px rgba(0,0,0,0.08)",
-        padding: 10,
-        minWidth: 180,
-        transition: "all 0.2s ease",
+        border: "1px solid #b0bec5",
+        borderRadius: 10,
+        background: "#f5f5f5",
+        padding: 12,
+        minWidth: 220,
+        position: "relative",
+        fontFamily: "Arial, sans-serif",
+        color: "#333",
       }}
     >
+      {/* ReactFlow Handles */}
+      <Handle type="target" position={Position.Left} id={`${id}-t`} />
+      <Handle type="source" position={Position.Right} id={`${id}-s`} />
+
       {/* Node Header */}
       <div
-        onClick={toggleNode}
         style={{
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
           cursor: "pointer",
-          paddingBottom: 4,
+          background: "#4caf50",
+          padding: "4px 8px",
+          borderRadius: 6,
+          color: "white",
+          fontWeight: 600,
         }}
       >
         <input
-          type="text"
           value={nodeName}
           onChange={(e) => setNodeName(e.target.value)}
           style={{
             border: "none",
             background: "transparent",
+            color: "white",
             fontWeight: 600,
-            fontSize: 14,
-            color: "#1a1a1a",
             width: "100%",
             outline: "none",
           }}
         />
         <button
+          onClick={toggleNode}
           style={{
-            border: "none",
-            background: "#f0f0f0",
-            color: "#333",
+            width: 24,
+            height: 24,
             borderRadius: "50%",
-            width: 22,
-            height: 22,
+            background: "white",
+            color: "#4caf50",
+            border: "none",
             cursor: "pointer",
-            fontSize: 13,
-            marginLeft: 6,
-            transition: "background 0.2s",
+            fontWeight: "bold",
           }}
-          onMouseEnter={(e) => (e.target.style.background = "#e0e0e0")}
-          onMouseLeave={(e) => (e.target.style.background = "#f0f0f0")}
         >
           {expanded ? "−" : "+"}
         </button>
       </div>
 
       {/* Sections */}
-      {expanded && sections.length > 0 && (
-        <div style={{ marginTop: 6 }}>
+      {expanded && (
+        <div style={{ marginTop: 10 }}>
           {sections.map((section) => (
             <div
               key={section.id}
               style={{
-                border: "1px solid #f1c232",
+                border: "1px solid #ffb74d",
                 borderRadius: 6,
-                background: "#fff7e6",
-                padding: 6,
+                padding: 8,
                 marginTop: 6,
+                background: "#fff3e0",
               }}
             >
-              {/* Section Header */}
               <div
-                onClick={() => toggleSection(section.id)}
                 style={{
                   display: "flex",
                   justifyContent: "space-between",
                   alignItems: "center",
-                  cursor: "pointer",
+                  color: "#e65100",
+                  fontWeight: 500,
                 }}
               >
-                <input
-                  type="text"
-                  value={section.name}
-                  onChange={(e) =>
-                    handleSectionNameChange(section.id, e.target.value)
-                  }
-                  style={{
-                    border: "none",
-                    background: "transparent",
-                    fontSize: 13,
-                    fontWeight: 500,
-                    color: "#333",
-                    width: "100%",
-                    outline: "none",
-                  }}
-                />
+                <span>{section.name}</span>
                 <button
+                  onClick={() => toggleSection(section.id)}
                   style={{
                     border: "none",
                     background: "transparent",
                     cursor: "pointer",
-                    color: "#666",
+                    fontWeight: "bold",
+                    color: "#e65100",
                   }}
                 >
                   {expandedSections[section.id] ? "−" : "+"}
                 </button>
               </div>
 
-              {/* Subnodes */}
+              {/* Add a child node on button click */}
               {expandedSections[section.id] && (
-                <div style={{ marginTop: 4 }}>
-                  {section.subnodes.map((sub) => (
-                    <div
-                      key={sub.id}
-                      style={{
-                        background: "#f2f4f8",
-                        border: "1px solid #d0d7de",
-                        borderRadius: 4,
-                        padding: 4,
-                        marginTop: 4,
-                        fontSize: 12,
-                        color: "#444",
-                      }}
-                    >
-                      <input
-                        type="text"
-                        value={sub.name}
-                        onChange={(e) =>
-                          handleSubnodeNameChange(
-                            section.id,
-                            sub.id,
-                            e.target.value
-                          )
-                        }
-                        style={{
-                          border: "none",
-                          background: "transparent",
-                          width: "100%",
-                          fontSize: 12,
-                          color: "#444",
-                          outline: "none",
-                        }}
-                      />
-                    </div>
-                  ))}
-                </div>
+                <button
+                  onClick={() => createNewChildNode(id)}
+                  style={{
+                    marginTop: 6,
+                    background: "#c8e6c9",
+                    border: "1px dashed #388e3c",
+                    borderRadius: 6,
+                    padding: "4px 6px",
+                    cursor: "pointer",
+                    fontSize: 12,
+                    color: "#2e7d32",
+                  }}
+                >
+                  + Create Subnode (Real Node)
+                </button>
               )}
             </div>
           ))}
+
+          <button
+            onClick={addSection}
+            style={{
+              marginTop: 8,
+              background: "#bbdefb",
+              border: "1px dashed #2196f3",
+              borderRadius: 6,
+              padding: "4px 8px",
+              cursor: "pointer",
+              color: "#0d47a1",
+              fontWeight: 500,
+            }}
+          >
+            + Add Section
+          </button>
         </div>
       )}
     </div>
