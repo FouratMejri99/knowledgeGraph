@@ -42,3 +42,48 @@ body,
 .read-the-docs {
   color: #888;
 }
+
+/* Remove blue focus rings/lines inside ReactFlow nodes when toggles are clicked */
+button:focus,
+button:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+.react-flow__node:focus,
+.react-flow__node:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+.react-flow__node.selected {
+  box-shadow: none !important;
+  border: 1px solid transparent !important;
+}
+
+.react-flow__nodesselection-rect,
+.react-flow__selection {
+  display: none !important;
+}
+
+.react-flow__node-default {
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+
+.react-flow__handle {
+  border: none !important;
+  box-shadow: none !important;
+  background: rgba(120, 120, 120, 0.35) !important;
+  width: 14px !important;
+  height: 14px !important;
+  opacity: 0.7 !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  pointer-events: all !important;
+}
+
+.react-flow__handle:hover {
+  opacity: 1 !important;
+  background: rgba(120, 120, 120, 0.65) !important;
+}

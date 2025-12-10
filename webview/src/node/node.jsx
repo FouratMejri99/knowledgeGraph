@@ -1,97 +1,230 @@
 import { Handle, Position } from "@xyflow/react";
-import { useState } from "react";
+import { SECTION_COLORS, SECTION_NAME_BY_TYPE } from "../utils/model";
 import Section from "./section";
+import Subnode from "./subnode";
 
-// Define colors per node type
-const NODE_TYPE_COLORS = {
-  Folder: "#ffd180",
-  File: "#90caf9",
-  Class: "#f48fb1",
-  Method: "#a5d6a7", // Class Function
-  Object: "#ce93d8",
-  "Local Function": "#80cbc4",
-  "External Function": "#ffab91",
-  Variable: "#ffe082",
-  "Local Library": "#b39ddb",
-  "External Library": "#c5e1a5",
+const PRIORITY_ORDER = [
+  "Files",
+  "Imports",
+  "Classes",
+  "Methods",
+  "Objects",
+  "Functions",
+  "Variables",
+  "Libraries",
+];
+
+const priorityIndex = PRIORITY_ORDER.reduce((acc, key, idx) => {
+  acc[key] = idx;
+  return acc;
+}, {});
+
+const normalizeBucket = (bucket) => {
+  const map = {
+    "Local Functions": "Functions",
+    "External Functions": "Functions",
+    "Local Libraries": "Libraries",
+    "External Libraries": "Libraries",
+  };
+  return map[bucket] || bucket;
 };
 
-export default function Node({ data, depth = 0 }) {
-  const [expanded, setExpanded] = useState(false);
-  const [nodeName, setNodeName] = useState(data.label || "Node");
+function bucketForType(type) {
+  return normalizeBucket(SECTION_NAME_BY_TYPE[type] || type || "unknown");
+}
 
-  const toggleNode = () => setExpanded((p) => !p);
+function sortByPriority(list, getBucket) {
+  return [...(list || [])].sort((a, b) => {
+    const aBucket = normalizeBucket(getBucket(a));
+    const bBucket = normalizeBucket(getBucket(b));
+    const aIdx = priorityIndex[aBucket] ?? Number.MAX_SAFE_INTEGER;
+    const bIdx = priorityIndex[bBucket] ?? Number.MAX_SAFE_INTEGER;
+    if (aIdx !== bIdx) return aIdx - bIdx;
+    const aName = a.name || a.label || aBucket;
+    const bName = b.name || b.label || bBucket;
+    return aName.localeCompare(bName);
+  });
+}
 
+export default function Node({
+  data,
+
+  onToggleNode,
+  onToggleSection,
+  showChildren = true,
+}) {
+  const expanded = data.expanded ?? false;
   const headerColor = data.color || "#4caf50";
+  const sortedSections = sortByPriority(data.sections, (s) => s.name);
+  const sortedSubnodes = sortByPriority(data.subnodes, (s) =>
+    bucketForType(s.type)
+  );
+
+  // Group sections by their normalized type (Functions, Variables, etc.)
+  // All sections with the same type go into the same rectangular frame
+  const groupedSections = sortedSections.reduce((groups, section) => {
+    // Normalize section name to group "Local Functions" and "External Functions" as "Functions"
+    const normalizedType = normalizeBucket(section.name || "");
+    if (!groups[normalizedType]) {
+      groups[normalizedType] = [];
+    }
+    groups[normalizedType].push(section);
+    return groups;
+  }, {});
 
   return (
     <div
       style={{
         border: `1px solid ${headerColor}`,
         borderRadius: 8,
-        background: "#fafafa",
-        padding: 6,
+        background: "transparent",
+        padding: 0,
         minWidth: 220,
         fontFamily: "Arial, sans-serif",
         fontSize: 13,
         color: "#000",
+        overflow: "hidden",
       }}
     >
-      {depth === 0 && (
-        <>
-          <Handle type="target" position={Position.Left} />
-          <Handle type="source" position={Position.Right} />
-        </>
-      )}
+      {/* Handles are always visible so relations can be created without expanding */}
+      <>
+        <Handle
+          type="target"
+          position={Position.Left}
+          id={`${data.id}-target`}
+          style={{
+            background: headerColor,
+            opacity: 0,
+            width: 16,
+            height: 16,
+            border: "none",
+            pointerEvents: "all",
+          }}
+        />
+        <Handle
+          type="source"
+          position={Position.Right}
+          id={`${data.id}-source`}
+          style={{
+            background: headerColor,
+            opacity: 0,
+            width: 16,
+            height: 16,
+            border: "none",
+            pointerEvents: "all",
+          }}
+        />
+      </>
 
-      {/* Node Header */}
       <div
         style={{
           display: "flex",
-          justifyContent: "space-between",
           alignItems: "center",
+          justifyContent: "space-between",
           background: headerColor,
           borderRadius: 6,
           padding: "4px 6px",
-          cursor: "pointer",
         }}
       >
-        <input
-          value={nodeName}
-          onChange={(e) => setNodeName(e.target.value)}
+        <span
+          onClick={() => onToggleNode?.(data.id)}
+          style={{
+            fontWeight: "bold",
+            fontSize: 18,
+            marginRight: 6,
+            userSelect: "none",
+            cursor: "pointer",
+            outline: "none",
+          }}
+        >
+          {expanded ? "−" : "+"}
+        </span>
+
+        <span
           style={{
             border: "none",
             background: "transparent",
             color: "#000",
             fontWeight: "bold",
             fontSize: 13,
-            width: "100%",
+            flex: 1,
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
           }}
-        />
-        <button
-          onClick={toggleNode}
+          title={data.label}
+        >
+          {data.label}
+        </span>
+
+        <span
           style={{
-            width: 22,
-            height: 22,
+            marginLeft: 6,
+            padding: "2px 8px",
+            borderRadius: 12,
             background: "#fff",
-            color: headerColor,
-            border: "none",
-            borderRadius: "50%",
-            cursor: "pointer",
+            color: "#4fc3f7",
+            fontSize: 11,
             fontWeight: "bold",
-            fontSize: 14,
+            whiteSpace: "nowrap",
           }}
         >
-          {expanded ? "−" : "+"}
-        </button>
+          {data.type}
+        </span>
       </div>
 
-      {/* Sections */}
-      {expanded && (
-        <div style={{ marginTop: 6 }}>
-          {data.sections?.map((sec) => (
-            <Section key={sec.id} section={sec} depth={0} />
-          ))}
+      {expanded && showChildren && (
+        <div
+          style={{
+            marginTop: 4,
+            padding: 8,
+            display: "flex",
+            flexDirection: "column",
+            gap: 8,
+            marginRight: 8, // add right-side breathing room from border
+          }}
+        >
+          {/* Render sections grouped by type in colored rectangular frames */}
+          {Object.entries(groupedSections).map(([type, sections]) => {
+            const groupColor = SECTION_COLORS[type] || "#ccc";
+            return (
+              <div
+                key={type}
+                style={{
+                  background: `${groupColor}40`, // semi-transparent fill
+                  border: `3px solid ${groupColor}`,
+                  borderRadius: 8,
+                  padding: 8,
+                  marginBottom: 8,
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 6,
+                  boxShadow: `0 2px 4px ${groupColor}30`,
+                }}
+              >
+                {sections.map((sec) => (
+                  <Section
+                    key={sec.id}
+                    section={sec}
+                    depth={0}
+                    onToggleSection={onToggleSection}
+                    onToggleNode={onToggleNode}
+                  />
+                ))}
+              </div>
+            );
+          })}
+
+          {(sortedSections.length === 0 || !data.sections?.length) &&
+            sortedSubnodes.map((sub) => (
+              <Subnode
+                key={sub.id}
+                data={sub}
+                depth={1}
+                onToggleNode={onToggleNode}
+                onToggleSection={onToggleSection}
+              />
+            ))}
         </div>
       )}
     </div>
