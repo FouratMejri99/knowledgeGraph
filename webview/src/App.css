@@ -87,3 +87,12 @@ button:focus-visible {
   opacity: 1 !important;
   background: rgba(120, 120, 120, 0.65) !important;
 }
+.react-flow__handle {
+  box-sizing: border-box !important;
+  padding: 0 !important;
+}
+
+.react-flow__edge-path {
+  stroke-linecap: square;
+  vector-effect: non-scaling-stroke;
+}

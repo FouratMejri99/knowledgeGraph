@@ -62,54 +62,58 @@ export default function Section({
   return (
     <div
       style={{
+        position: "relative", // REQUIRED
         border: `1px solid ${sectionColor}`,
         padding: 4,
         borderRadius: 4,
         marginTop: 2,
         marginBottom: 2,
-        background: "transparent", // No background since parent rectangle provides color
+        background: "transparent",
         marginLeft: depth * 8,
       }}
     >
+      {/* Section handles */}
+      <Handle
+        type="target"
+        position={Position.Left}
+        id={`${section.id}-target`}
+        style={{
+          background: sectionColor,
+          opacity: 0,
+          width: 16,
+          height: 16,
+          border: "none",
+          pointerEvents: "all",
+        }}
+      />
+
+      <Handle
+        type="source"
+        position={Position.Right}
+        id={`${section.id}-source`}
+        style={{
+          background: sectionColor,
+          opacity: 0,
+          width: 16,
+          height: 16,
+          border: "none",
+          pointerEvents: "all",
+        }}
+      />
+
+      {/* HEADER ROW (you MUST keep this) */}
       <div
         style={{
           display: "flex",
           justifyContent: "space-between",
+          alignItems: "center",
           fontWeight: "bold",
           fontSize: 12,
           color: "#000",
-          alignItems: "center",
         }}
       >
-        {/* Section handles */}
-        <Handle
-          type="target"
-          position={Position.Left}
-          id={`${section.id}-target`}
-          style={{
-            background: sectionColor,
-            opacity: 0,
-            width: 16,
-            height: 16,
-            border: "none",
-            pointerEvents: "all",
-          }}
-        />
-        <Handle
-          type="source"
-          position={Position.Right}
-          id={`${section.id}-source`}
-          style={{
-            background: sectionColor,
-            opacity: 0,
-            width: 16,
-            height: 16,
-            border: "none",
-            pointerEvents: "all",
-          }}
-        />
-
         <span>{section.name}</span>
+
         <button
           onClick={() => onToggleSection?.(section.parentNodeId, section.id)}
           tabIndex={-1}
@@ -128,7 +132,7 @@ export default function Section({
         </button>
       </div>
 
-      {/* Render subnodes inside section */}
+      {/* Subnodes */}
       {expanded &&
         showChildren &&
         sortSubnodes(section.subnodes).map((sub) => (

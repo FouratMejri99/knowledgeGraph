@@ -29,7 +29,7 @@ export const SECTION_NAME_BY_TYPE = {
 export const SECTION_COLORS = {
   Functions: "#4caf50", // green
   Variables: "#ff9800", // orange
-  Classes: "#2196f3", // blue
+  Classes: "#f48fb1", // blue
   Methods: "#9c27b0", // purple
   Objects: "#f44336", // red
   Libraries: "#607d8b", // gray

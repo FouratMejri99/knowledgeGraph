@@ -10,6 +10,7 @@ import "@xyflow/react/dist/style.css";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import dataGraph from "./data/datagraph.json";
 import ExpandableNode from "./node/ExpandableNode";
+import FolderNode from "./node/FolderNode";
 import { graphToFlow } from "./utils/graphToFlow";
 
 function buildLookups(flowNodes) {
@@ -240,28 +241,24 @@ function Flow() {
           onToggleSection={handleToggleSection}
         />
       ),
+      folder: FolderNode,
     }),
     [handleToggleNode, handleToggleSection]
   );
 
   const handleConnect = useCallback(
     (params) => {
-      const sourceEp = classifyEndpoint(
-        nodes,
-        params.source,
-        params.sourceHandle
-      );
-      const targetEp = classifyEndpoint(
-        nodes,
-        params.target,
-        params.targetHandle
-      );
-
       const newEdge = {
         ...params,
-        style: { stroke: "#999", strokeWidth: 2 },
-        markerEnd: undefined,
+        type: "smoothstep",
+        style: { stroke: "#5c3cb3ff", strokeWidth: 2 },
+        markerEnd: {
+          type: MarkerType.ArrowClosed,
+          width: 10,
+          height: 10,
+        },
       };
+
       setUserEdges((prev) => {
         const next = [...prev, newEdge];
         updateEdgesFor(nodes, relationships, next);
