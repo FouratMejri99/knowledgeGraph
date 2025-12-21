@@ -135,6 +135,8 @@ export default function Section({
       {/* Subnodes */}
       {expanded &&
         showChildren &&
+        section.subnodes &&
+        section.subnodes.length > 0 &&
         sortSubnodes(section.subnodes).map((sub) => (
           <Subnode
             key={sub.id}

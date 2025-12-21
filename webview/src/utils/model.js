@@ -176,7 +176,12 @@ export class RelationshipModel {
       labelStyle: this.labelStyle,
       labelBgStyle: this.labelBgStyle,
       labelBgPadding: this.labelBgPadding,
-      markerEnd: undefined,
+      markerEnd: {
+        type: "arrowclosed",
+        width: 20,
+        height: 20,
+        color: stroke,
+      },
     };
   }
 }

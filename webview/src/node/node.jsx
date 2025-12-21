@@ -67,9 +67,30 @@ export default function Node({
   onToggleNode,
   onToggleSection,
   showChildren = true,
+  onNodeClick,
+  isInRootFolder = false,
+  subfolderPrefix = null,
 }) {
   const expanded = data.expanded ?? false;
   const headerColor = data.color || "#4caf50";
+  
+  // Remove prefix from label if node is inside matching subfolder
+  let displayLabel = data.label || data.name || "";
+  if (subfolderPrefix && displayLabel.startsWith(`${subfolderPrefix}/`)) {
+    displayLabel = displayLabel.substring(subfolderPrefix.length + 1);
+  }
+
+  const handleHeaderClick = (e) => {
+    // Don't trigger extraction if clicking the toggle button or its parent
+    const toggleButton = e.target.closest('span[style*="cursor: pointer"]');
+    if (toggleButton) {
+      return;
+    }
+    // Only extract if clicking the header area (not the toggle button)
+    if (isInRootFolder && onNodeClick && e.target !== toggleButton) {
+      onNodeClick(data.id);
+    }
+  };
 
   const sortedSections = sortByPriority(data.sections, (s) => s.name);
   const sortedSubnodes = sortByPriority(data.subnodes, (s) =>
@@ -143,6 +164,7 @@ export default function Node({
           Header
       ======================= */}
       <div
+        onClick={handleHeaderClick}
         style={{
           display: "flex",
           alignItems: "center",
@@ -150,10 +172,14 @@ export default function Node({
           background: headerColor,
           padding: SPACING,
           borderRadius: BORDER_RADIUS,
+          cursor: isInRootFolder ? "pointer" : "default",
         }}
       >
         <span
-          onClick={() => onToggleNode?.(data.id)}
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleNode?.(data.id);
+          }}
           style={{
             fontWeight: "bold",
             fontSize: 18,
@@ -165,7 +191,7 @@ export default function Node({
         </span>
 
         <span
-          title={data.label}
+          title={data.label || data.name || ""}
           style={{
             flex: 1,
             fontWeight: "bold",
@@ -174,7 +200,19 @@ export default function Node({
             textOverflow: "ellipsis",
           }}
         >
-          {data.label}
+          {displayLabel}
+          {isInRootFolder && (
+            <span
+              style={{
+                fontSize: 10,
+                opacity: 0.8,
+                marginLeft: 4,
+                fontStyle: "italic",
+              }}
+            >
+              (click to extract)
+            </span>
+          )}
         </span>
 
         <span
@@ -263,7 +301,7 @@ export default function Node({
                 ))}
               </div>
             );
-          })}
+          }          )}
         </div>
       )}
     </div>

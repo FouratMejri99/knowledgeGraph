@@ -156,16 +156,166 @@ export const sortByPriority = (items, mapper) =>
     return aName.localeCompare(bName);
   });
 
-function layoutRoots(roots) {
-  return roots.map((node, index) => ({
-    id: node.id,
-    type: "expandable",
-    position: {
-      x: 80 + (index % 5) * 360,
-      y: 80 + Math.floor(index / 5) * 220,
-    },
-    data: node,
-  }));
+function getNodePrefix(node) {
+  const name = node.name || node.label || "";
+  const parts = name.split("/");
+  return parts.length > 1 ? parts[0] : null;
+}
+
+function groupNodesByPrefix(roots) {
+  const groups = new Map();
+  const ungrouped = [];
+  
+  roots.forEach((node) => {
+    const prefix = getNodePrefix(node);
+    if (prefix) {
+      if (!groups.has(prefix)) {
+        groups.set(prefix, []);
+      }
+      groups.get(prefix).push(node);
+    } else {
+      ungrouped.push(node);
+    }
+  });
+  
+  return { groups, ungrouped };
+}
+
+function layoutNodesInRootFolder(roots) {
+  // Sort nodes alphabetically
+  const sortedRoots = [...roots].sort((a, b) => {
+    const aName = (a.name || a.label || "").toLowerCase();
+    const bName = (b.name || b.label || "").toLowerCase();
+    return aName.localeCompare(bName);
+  });
+
+  // Group nodes by prefix for subfolders
+  const { groups, ungrouped } = groupNodesByPrefix(sortedRoots);
+  
+  const NODES_PER_ROW = 3;
+  const NODE_WIDTH = 280;
+  const NODE_HEIGHT = 200;
+  const SUBFOLDER_WIDTH = 900;
+  const SPACING = 24; // Increased spacing between nodes
+  const SUBFOLDER_SPACING = 32; // Increased spacing between subfolders
+  const CONTENT_PADDING_TOP = 24; // Top padding in content area
+  const CONTENT_PADDING_SIDE = 20; // Side padding in content area
+  
+  const flowNodes = [];
+  const HEADER_HEIGHT = 50;
+  // Start position for content inside root folder (after header)
+  let currentY = HEADER_HEIGHT + CONTENT_PADDING_TOP;
+  
+  // Layout subfolders first
+  const sortedPrefixes = Array.from(groups.keys()).sort();
+  sortedPrefixes.forEach((prefix) => {
+    const nodesInGroup = groups.get(prefix);
+    const sortedNodesInGroup = [...nodesInGroup].sort((a, b) => {
+      const aName = (a.name || a.label || "").toLowerCase();
+      const bName = (b.name || b.label || "").toLowerCase();
+      return aName.localeCompare(bName);
+    });
+    
+    const numRows = Math.ceil(sortedNodesInGroup.length / NODES_PER_ROW);
+    // Calculate content height (excluding header): top padding + nodes + spacing + bottom padding
+    const contentHeight = CONTENT_PADDING_TOP + numRows * NODE_HEIGHT + (numRows - 1) * SPACING + 24;
+    // Total height: header + content height
+    const subfolderHeight = HEADER_HEIGHT + contentHeight;
+    
+    // Create subfolder
+    const subfolderId = `subfolder-${prefix}`;
+    flowNodes.push({
+      id: subfolderId,
+      type: "folder",
+      position: { x: CONTENT_PADDING_SIDE, y: currentY },
+      data: {
+        label: prefix,
+        expanded: true,
+        isSubfolder: true,
+        totalContentHeight: contentHeight,
+      },
+      style: {
+        width: SUBFOLDER_WIDTH,
+        height: subfolderHeight,
+      },
+      parentId: "root-folder",
+      extent: "parent",
+      draggable: false,
+    });
+    
+    // Layout nodes inside subfolder (positions relative to subfolder origin, must be below header)
+    sortedNodesInGroup.forEach((node, index) => {
+      const row = Math.floor(index / NODES_PER_ROW);
+      const col = index % NODES_PER_ROW;
+      const nodeX = CONTENT_PADDING_SIDE + col * (NODE_WIDTH + SPACING);
+      // Position nodes below subfolder header: header height (50) + top padding (24) + row offset
+      const nodeY = HEADER_HEIGHT + CONTENT_PADDING_TOP + row * (NODE_HEIGHT + SPACING);
+      flowNodes.push({
+        id: node.id,
+        type: "expandable",
+        position: {
+          x: nodeX,
+          y: nodeY,
+        },
+        data: {
+          ...node,
+          expanded: false,
+          originalPosition: {
+            x: nodeX,
+            y: nodeY,
+          },
+          originalParentId: subfolderId,
+        },
+        parentId: subfolderId,
+        extent: "parent",
+        draggable: false,
+      });
+    });
+    
+    currentY += subfolderHeight + SUBFOLDER_SPACING;
+  });
+  
+  // Layout ungrouped nodes (positions relative to root folder origin, must be below header)
+  ungrouped.forEach((node, index) => {
+    const row = Math.floor(index / NODES_PER_ROW);
+    const col = index % NODES_PER_ROW;
+    const nodeX = CONTENT_PADDING_SIDE + col * (NODE_WIDTH + SPACING);
+    // Position relative to root folder origin: header (50) + top padding (24) + row offset
+    // currentY already includes header + padding + all previous subfolders, so use it as base for first row
+    const baseY = currentY;
+    const nodeY = baseY + row * (NODE_HEIGHT + SPACING);
+    flowNodes.push({
+      id: node.id,
+      type: "expandable",
+      position: {
+        x: nodeX,
+        y: nodeY,
+      },
+      data: {
+        ...node,
+        expanded: false,
+        originalPosition: {
+          x: nodeX,
+          y: nodeY,
+        },
+        originalParentId: "root-folder",
+      },
+      parentId: "root-folder",
+      extent: "parent",
+      draggable: false,
+    });
+  });
+  
+  // Update currentY for total height calculation
+  const numUngroupedRows = Math.ceil(ungrouped.length / NODES_PER_ROW);
+  if (ungrouped.length > 0) {
+    currentY += numUngroupedRows * (NODE_HEIGHT + SPACING);
+  }
+  currentY += 24; // Bottom padding
+  // Adjust to get total content height (subtract header since currentY includes it)
+  const contentHeight = currentY - HEADER_HEIGHT;
+  
+  return { flowNodes, totalHeight: contentHeight };
 }
 
 export function graphToFlow(rawNodes = [], rawEdges = []) {
@@ -197,7 +347,31 @@ export function graphToFlow(rawNodes = [], rawEdges = []) {
 
   const roots = [...nodeMap.values()].filter((node) => !hasParent.has(node.id));
   roots.forEach((root) => annotateHierarchy(root));
-  const flowNodes = layoutRoots(roots);
+  
+  // Create root folder with subfolders
+  const { flowNodes: nodesInFolder, totalHeight } = layoutNodesInRootFolder(roots);
+  const HEADER_HEIGHT = 50;
+  const CONTENT_PADDING = 48; // Top (24) + bottom (24) padding
+  const folderWidth = 3 * 280 + 4 * 24 + 40; // 3 nodes * 280px + 4 spacings * 24px + 40px side padding
+  const folderHeight = Math.max(200, HEADER_HEIGHT + totalHeight);
+  
+  const rootFolder = {
+    id: "root-folder",
+    type: "folder",
+    position: { x: 50, y: 50 },
+    data: {
+      label: "root",
+      expanded: true,
+      isRootFolder: true,
+      totalContentHeight: totalHeight,
+    },
+    style: {
+      width: folderWidth,
+      height: folderHeight,
+    },
+  };
+  
+  const flowNodes = [rootFolder, ...nodesInFolder];
   const relationshipEdges = buildRelationshipEdges(rawEdges, nodeMap);
 
   return {
